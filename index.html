@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#f6f3ec">
+<title>Draadkunst - telefoonhandleiding</title>
+<style>
+:root{--bg:#f6f3ec;--card:#fff;--ink:#202626;--muted:#68716d;--line:#d8ddd9;--from:#245aa8;--to:#a34a31;--accent:#16645d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{width:min(100%,520px);margin:0 auto;padding:12px 12px 18px;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:2px 4px 0}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.step{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 2px 10px rgba(0,0,0,.035)}
+.diagram-card{padding:10px}
+canvas{display:block;width:100%;height:auto;aspect-ratio:1/1}
+.route{padding:13px 14px 14px;text-align:center}
+.labels{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px}
+.small{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted)}
+.num{font-size:clamp(46px,16vw,74px);line-height:.95;font-weight:800;font-variant-numeric:tabular-nums}
+#from{color:var(--from)}#to{color:var(--to)}
+.arrow{font-size:36px;color:#818985;padding-bottom:5px}
+.hint{font-size:13px;color:var(--muted);margin:10px 2px 0}
+.primary{width:100%;border:0;border-radius:16px;background:var(--accent);color:#fff;font:800 18px/1 system-ui;padding:18px 16px;min-height:58px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.primary:disabled{opacity:.55}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.secondary{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:13px;font:700 15px system-ui;min-height:48px;padding:10px 12px}
+.progress-card{padding:12px 13px}
+progress{appearance:none;width:100%;height:10px;border:0;border-radius:999px;overflow:hidden;background:#e5eae6}
+progress::-webkit-progress-bar{background:#e5eae6}progress::-webkit-progress-value{background:var(--accent)}progress::-moz-progress-bar{background:var(--accent)}
+.progress-text{display:flex;justify-content:space-between;gap:10px;margin-top:7px;font-size:12px;color:var(--muted)}
+.jump{display:flex;align-items:center;gap:8px;margin-top:10px}
+.jump label{font-size:13px;color:var(--muted);white-space:nowrap}
+.jump input{width:88px;min-height:42px;border:1px solid var(--line);border-radius:11px;font:700 16px system-ui;padding:8px 10px;background:#fff;color:var(--ink)}
+.jump button{min-height:42px;border:1px solid var(--line);border-radius:11px;background:#fff;font:700 14px system-ui;padding:8px 13px}
+.save{font-size:11px;color:var(--muted);text-align:center;min-height:16px;margin:1px 0 0}
+@media (max-height:760px){main{gap:7px;padding-top:7px}.diagram-card{padding:6px}.route{padding:8px 12px 10px}.num{font-size:50px}.primary{min-height:52px;padding:15px}.progress-card{padding:9px 11px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="kicker">Draadkunst</div><div class="step" id="stepLabel"></div></div>
+
+  <section class="card diagram-card">
+    <canvas id="diagram" width="760" height="760" aria-label="Cirkel met alleen het huidige draadsegment"></canvas>
+  </section>
+
+  <section class="card route">
+    <div class="labels">
+      <div><div class="small">VAN</div><div class="num" id="from">240</div></div>
+      <div class="arrow">→</div>
+      <div><div class="small">NAAR</div><div class="num" id="to">116</div></div>
+    </div>
+    <div class="hint" id="hint">Ga met dezelfde draad rechtstreeks van spijker 240 naar spijker 116.</div>
+  </section>
+
+  <button id="next" class="primary" type="button">Lijn voltooid</button>
+  <div class="row">
+    <button id="previous" class="secondary" type="button">← Vorige lijn</button>
+    <button id="wake" class="secondary" type="button">Scherm wakker houden</button>
+  </div>
+
+  <section class="card progress-card">
+    <progress id="progress" max="3219" value="0"></progress>
+    <div class="progress-text"><span id="progressText">0 van 3.219</span><span id="percentText">0,0%</span></div>
+    <div class="jump"><label for="jumpInput">Ga naar lijn</label><input id="jumpInput" type="number" min="1" max="3219" value="1"><button id="jumpButton" type="button">Ga</button></div>
+  </section>
+  <div id="saveStatus" class="save">Voortgang wordt op deze telefoon opgeslagen.</div>
+</main>
+<script>
+const path=Array.from(Uint8Array.from(atob('8HTvdu587H3omemU6Jjl6nvseul76+aZ54rlmeSY45fdk96S3OGR3fimOZ953roe+Z67XXseet173Lqde507XPseOh552/tgdyT25HakNmR2JDbl+R65Xnmbud45Ybhh+CG4oXheOCVkNeP2XLsbeZs5XfhduJ642viauFp4nnpdd9q42zsdOtz3HTbkt1q4GnfaO9x6nDpcdmN1Y7UjdOO1tGL04zUz4rQic+I0IvSjdpp3GreaOBn32beZ91o3GfvZd1m3GXfW+9a0FncZNtl2mTdTd+HzIbLiM6JyojJh87Ih89Z70zcY9po4VDihMuFyobJhciEx4PIhs6K0Y3Wj9hy62DmYeVt50Hmb+hw7oLHhcaEyYnCiL/Fhb+EykTsQu9Yz4vBjtdg2WPbc85Y2WHaYtuBxoK/h82KwYnSjNWPrY28idGMwIq7hryIvYTFgMR/w2XeT+F55HvWYOV91Xy8hLuJuoq1ibK3iL6Huoa+hbextoiyirGItYW4hL6DuLOHsYmwiq+Jroq0hbZ1t4S0hrOEtYO9f76CtXW0g7OFwIusiq2JrIivh7KGsYSyhcxb417lQspB5W7tV9ld12HbStxJ10vdT+Js5G3Ufb2AxmbFgbKDsYWuh6qJqYqriKmHrKeHrYWvhqyFq4aqhaeJqIqliaSFsIO5dLhzt3S2c7V0tIKzc7Rys3SygrCEr4Kxga+DroStgq6BsHSxc7B/rYOshKuDqoTATd5O41zWbtV7vHq7fLp9rYGsgK9zsnKuc6yCyFbtnIWhiqOHqISpgquAqnOtdKumiKWgiqKI0XfSYdFT0mDaX+tU1UnrR9VV1mTYcZ6DqIufgpuFpnOrgcdpqmusfL1+m4eZiMFlxmTDZuB5m3i8V85J1kvZYthj7kDsRutA7z/unXWbg8lS0WDqmoOZhaVzqXS6aKpqq3Kxb+k67DzrPu4w7y/uLu8t7izvK+4q7ynuNOtI2krZXuhA5zroOeY46jztNeo07TLrNuxFyEHRYsNj1G6ecqmGzUnbTOGYi5eKmImXh5iIoHOnhJxym3Ooa+Q55zTmNeww7S/sLuo34znlOOQ15THrL+ku6zPkMuMz5i7tLews6y3qLO0r7CrrK+oq7SjuJ+0p7CjqKesw5DHjL+Qu4zjoLeks6CvpKugp6SjrIukn7EPNR9Zd2ErdTuI54TjiN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'),c=>c.charCodeAt(0)));
+const total=path.length-1;
+const storageKey='string-art-240-nl-58cm-e317a40d16ac1adf';
+const $=id=>document.getElementById(id);
+const nl=n=>n.toLocaleString('nl-NL');
+let completed=0, storageWorks=true, wakeLock=null;
+try{const saved=JSON.parse(localStorage.getItem(storageKey)||'null');if(saved&&Number.isInteger(saved.completed))completed=Math.max(0,Math.min(total,saved.completed));}catch(e){storageWorks=false}
+function save(){try{localStorage.setItem(storageKey,JSON.stringify({completed,updated:new Date().toISOString()}));storageWorks=true}catch(e){storageWorks=false}}
+function idx(n){return n===240?0:n}
+function xy(n,r=302){const t=2*Math.PI*idx(n)/240;return[380+r*Math.sin(t),380-r*Math.cos(t)]}
+function labelBubble(g,n,p,color,inside=true){
+  const q=xy(n,inside?250:335), txt=String(n);
+  g.font='800 28px system-ui'; const w=Math.max(56,g.measureText(txt).width+22),h=44;
+  g.fillStyle='rgba(255,255,255,.97)';g.strokeStyle=color;g.lineWidth=2;
+  g.beginPath();const x=q[0]-w/2,y=q[1]-h/2,r=12;
+  g.roundRect(x,y,w,h,r);g.fill();g.stroke();
+  g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';g.fillText(txt,q[0],q[1]+1);
+}
+function draw(){
+  const c=$('diagram'),g=c.getContext('2d');g.clearRect(0,0,760,760);g.fillStyle='#fff';g.fillRect(0,0,760,760);
+  g.strokeStyle='#d1d8d3';g.lineWidth=2;g.beginPath();g.arc(380,380,302,0,2*Math.PI);g.stroke();
+  for(let n=1;n<=240;n++){const p=xy(n),major=n%20===0;g.fillStyle=major?'#66706a':'#a5ada8';g.beginPath();g.arc(p[0],p[1],major?3.8:2.0,0,2*Math.PI);g.fill();}
+  const done=completed===total,from=path[completed],to=done?240:path[completed+1],a=xy(from),b=xy(to);
+  if(!done){g.strokeStyle='#a34a31';g.lineWidth=4.2;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();}
+  for(const [n,color] of [[to,'#a34a31'],[from,'#245aa8']]){const p=xy(n);g.fillStyle=color;g.beginPath();g.arc(p[0],p[1],9.5,0,2*Math.PI);g.fill();labelBubble(g,n,p,color,true)}
+  g.font='700 17px system-ui';g.fillStyle='#8a928e';g.textAlign='center';g.textBaseline='middle';
+  for(const n of [240,60,120,180]){const q=xy(n,340);g.fillText(String(n),q[0],q[1]);}
+}
+function update(){
+  const done=completed===total,from=path[completed],to=done?240:path[completed+1];
+  $('stepLabel').textContent=done?'Klaar':`Lijn ${nl(completed+1)} van ${nl(total)}`;
+  $('from').textContent=from;$('to').textContent=to;
+  $('hint').textContent=done?'De draad is terug bij spijker 240. Maak de laatste knoop vast.':(completed===0?`Knoop de draad vast aan spijker 240 en ga daarna naar spijker ${to}.`:`Ga met dezelfde draad rechtstreeks van spijker ${from} naar spijker ${to}.`);
+  $('next').disabled=done;$('next').textContent=done?'Route voltooid':'Lijn voltooid';$('previous').disabled=completed===0;
+  $('progress').value=completed;$('progressText').textContent=`${nl(completed)} van ${nl(total)} voltooid`;$('percentText').textContent=(100*completed/total).toLocaleString('nl-NL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+  $('jumpInput').value=Math.min(total,completed+1);
+  $('saveStatus').textContent=storageWorks?'Voortgang wordt op deze telefoon opgeslagen.':'Let op: deze browser kan je voortgang niet opslaan.';
+  draw();
+}
+function setProgress(n){completed=Math.max(0,Math.min(total,Math.trunc(n)));save();update()}
+$('next').addEventListener('click',()=>setProgress(completed+1));
+$('previous').addEventListener('click',()=>setProgress(completed-1));
+function jump(){const n=Number($('jumpInput').value);if(Number.isInteger(n)&&n>=1&&n<=total)setProgress(n-1);else $('jumpInput').reportValidity()}
+$('jumpButton').addEventListener('click',jump);$('jumpInput').addEventListener('keydown',e=>{if(e.key==='Enter')jump()});
+async function toggleWake(){
+  if(!('wakeLock' in navigator)){$('wake').textContent='Niet ondersteund';return}
+  try{if(wakeLock){await wakeLock.release();wakeLock=null;$('wake').textContent='Scherm wakker houden'}else{wakeLock=await navigator.wakeLock.request('screen');$('wake').textContent='Scherm blijft wakker';wakeLock.addEventListener('release',()=>{wakeLock=null;$('wake').textContent='Scherm wakker houden'})}}catch(e){$('wake').textContent='Niet beschikbaar'}
+}
+$('wake').addEventListener('click',toggleWake);
+document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&$('wake').textContent==='Scherm blijft wakker'&&!wakeLock){try{wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}});
+if(path[0]!==240||path[total]!==240||path.some(n=>!Number.isInteger(n)||n<1||n>240))throw new Error('Ongeldige routegegevens');
+save();update();
+</script>
+</body>
+</html>
